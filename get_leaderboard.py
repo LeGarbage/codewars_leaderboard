@@ -3,9 +3,11 @@ import argparse
 import schedule
 import time
 import os
+from typing import Union
 from rich import print as rprint
 from rich.progress import Progress
 from rich.table import Table
+from rich.layout import Layout
 
 
 def main():
@@ -24,7 +26,21 @@ def main():
                     else:
                         errors.append(f"[red]{username} could not be found")
                 progress.update(leaderboard, advance=1)
-        
+        layout = Layout()
+        if args.display:
+            layout.split_column(
+                Layout(name="upper"),
+                Layout(name="lower")
+            )
+            layout["lower"].split_row(
+                Layout(name="left"),
+                Layout(name="right"),
+            )
+            layout["lower"].split_row(
+                Layout(name="center"),
+                Layout(name="other_center"),
+            )
+        rprint(layout)
         table = Table(title="Leaderboard", show_edge=False, show_lines=True, expand=True)
         table.add_column("Rank", ratio=3, style="blue")
         table.add_column("User", ratio=20, style="green")
@@ -46,6 +62,7 @@ def main():
     parser.add_argument("-t", "--time", type=int,  help="Sets the program to run every x minutes")
     parser.add_argument("-s", "--surpress", action="store_true", help="Supresses any error messages from missing usernames. Note: Does not supress any file-related errors")
     parser.add_argument("-g", "--group", nargs="+", action="append", help="Add a group of users. The first argument is the name of the group, and anything after that is either files or usernames")
+    parser.add_argument("-d", "--display", action="store_true", help="Displays individual group leaderboards in addition to the overall leaderboard")
     args = parser.parse_args()
 
     usernames = []
@@ -67,9 +84,11 @@ def main():
             usernames.append(i)
 
     groups = {}
+    groups_list = {}
 
     for group in args.group:
         group_name = group[0]
+        groups_list[group_name] = []
         group.pop(0)
         for user in group:
             if os.path.isfile(user):
@@ -77,9 +96,11 @@ def main():
                 usernames.extend(parsed)
                 for username in parse_file(user):
                     groups[username] = group_name
+                    groups_list[group_name].append(username)
             else:
                 usernames.append(user)
                 groups[user] = group_name
+                groups_list[group_name].append(username)
 
     if args.time:
             schedule.every(args.time).minutes.do(get_leaderboard)
@@ -92,8 +113,9 @@ def main():
 def parse_file(path):
     try:
         file = open(path, "r")
-        return[j.strip() for j in file.readlines()]
+        parsed = [j.strip() for j in file.readlines()]
         file.close()
+        return parsed
     except FileNotFoundError:
         rprint(f"[red]Cannot find {path}")
         return []

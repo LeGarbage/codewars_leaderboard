@@ -90,7 +90,7 @@ def main():
             else:
                 usernames.append(user)
                 groups[user] = group_name
-                groups_list[group_name].append(username)
+                groups_list[group_name].append(user)
 
     user_ranking = {}
     errors = ["\n"]
